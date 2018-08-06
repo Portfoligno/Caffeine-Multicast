@@ -3,19 +3,30 @@ package io.github.portfoligno.caffeine.multicast
 
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Semaphore
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 @JvmName("create")
-fun <K, V> multicast(loader: BulkCacheLoader<K, V>): BulkCacheLoader<K, V> =
-    MulticastCacheLoader(loader)
+fun <K, V> multicast(
+    identityKeyEquivalence: Boolean,
+    loader: BulkCacheLoader<K, V>
+): BulkCacheLoader<K, V> =
+    MulticastCacheLoader(identityKeyEquivalence, loader)
 
 internal
 class MulticastCacheLoader<K, V>(
     private
+    val identityKeyEquivalence: Boolean,
+    private
     val delegate: BulkCacheLoader<K, V>
 ) : BulkCacheLoader<K, V> {
   private
-  val locks = ConcurrentHashMap<K, Semaphore>()
+  val locks: MutableMap<K, Semaphore> =
+      if (!identityKeyEquivalence) ConcurrentHashMap() else weakMapOf()
+  private
+  val temporaryResults = weakMapOf<Semaphore, Either<Throwable, Map<K, V>>>()
 
   override
   fun loadAll(keys: Iterable<K>): Map<K, V> {
@@ -24,7 +35,7 @@ class MulticastCacheLoader<K, V>(
     }
     val iterator = keys.iterator()
     val toLoad = ArrayList<K>()
-    val toWait = IdentityHashMap<Semaphore, Unit>()
+    val toWait = IdentityHashMap<Semaphore, MutableList<K>>()
 
     try {
       // First check for semaphore initialization
@@ -35,7 +46,7 @@ class MulticastCacheLoader<K, V>(
           lock.value
         }
         if (!lock.isInitialized()) {
-          toWait[s] = Unit
+          toWait.getOrPut(s) { ArrayList() }.add(k)
         }
         else {
           // the mapping function is invoked exclusively
@@ -43,31 +54,64 @@ class MulticastCacheLoader<K, V>(
           break
         }
       }
-      // Check for matched identity of the semaphore
-      if (lock.isInitialized()) {
+
+      // Skip loading if there is no keys to load
+      val loaded = if (!lock.isInitialized()) mapOf() else {
+        // Check for matched identity of the semaphore
         val lockValue = lock.value
 
-        iterator.forEach {
-          val s = locks.getOrPut(it) {
+        iterator.forEach { k ->
+          val s = locks.getOrPut(k) {
             lockValue
           }
           if (s !== lockValue) {
-            toWait[s] = Unit
+            toWait.getOrPut(s) { ArrayList() }.add(k)
           }
           else {
-            toLoad.add(it)
+            toLoad.add(k)
           }
         }
-      }
-      // Load all values with permission acquired
-      val loaded =
-          delegate.loadAll(Collections.unmodifiableList(toLoad))
 
-      // Wait for other values
-      toWait.keys.forEach {
-        it.acquireUninterruptibly(0)
+        // Load all values with permission acquired
+        delegate
+            .loadAll(Collections.unmodifiableList(toLoad))
+            .also {
+              // Share loaded values
+              temporaryResults[lockValue] = Either.Right(it)
+            }
       }
+
+      if (toWait.isNotEmpty()) {
+        // Combined results
+        val results: MutableMap<K, V> =
+            if (!identityKeyEquivalence) HashMap(loaded) else IdentityHashMap(loaded)
+
+        // Wait for other values
+        toWait.forEach { s, ks ->
+          s.acquireUninterruptibly(0)
+          val r = temporaryResults[s]
+
+          r!!.fold({
+            // Propagate the error
+            throw ExecutionException(it)
+          }) { m ->
+            // Gather successful values
+            ks.forEach { k ->
+              m[k]?.let { results[k] = it }
+            }
+          }
+        }
+        return results
+      }
+      // Plain results
       return loaded
+    }
+    catch (t: Throwable) {
+      if (lock.isInitialized()) {
+        // Result as an error
+        temporaryResults[lock.value] = Either.Left(t)
+      }
+      throw t
     }
     finally {
       if (lock.isInitialized()) {
