@@ -82,9 +82,10 @@ class MulticastCacheLoader<K, V>(
         // Wait for other values
         toWait.forEach { s, ks ->
           s.acquireUninterruptibly(0)
-          val r = temporaryResults[s]
+          val r = temporaryResults[s] ?: throw IllegalStateException(
+              "Results missing while loading $ks with $s")
 
-          r!!.fold({
+          r.fold({
             // Propagate the error
             throw ExecutionException(it)
           }) { m ->
