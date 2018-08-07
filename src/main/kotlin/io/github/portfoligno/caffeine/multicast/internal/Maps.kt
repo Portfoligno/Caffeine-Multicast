@@ -1,4 +1,4 @@
-package io.github.portfoligno.caffeine.multicast
+package io.github.portfoligno.caffeine.multicast.internal
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import java.util.concurrent.ConcurrentMap

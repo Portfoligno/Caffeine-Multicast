@@ -1,4 +1,4 @@
-package io.github.portfoligno.caffeine.multicast
+package io.github.portfoligno.caffeine.multicast.internal
 
 internal
 sealed class Either<out A, out B> {

@@ -1,19 +1,12 @@
-@file:JvmName("MulticastCacheLoader")
-package io.github.portfoligno.caffeine.multicast
+package io.github.portfoligno.caffeine.multicast.internal
 
+import io.github.portfoligno.caffeine.multicast.BulkCacheLoader
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Semaphore
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-
-@JvmName("create")
-fun <K, V> multicast(
-    identityKeyEquivalence: Boolean,
-    loader: BulkCacheLoader<K, V>
-): BulkCacheLoader<K, V> =
-    MulticastCacheLoader(identityKeyEquivalence, loader)
 
 internal
 class MulticastCacheLoader<K, V>(
