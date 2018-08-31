@@ -6,7 +6,7 @@ plugins {
   kotlin("jvm") version "1.2.60"
 }
 tasks.withType<Wrapper> {
-  gradleVersion = "4.9"
+  gradleVersion = "4.10"
 }
 
 java {
