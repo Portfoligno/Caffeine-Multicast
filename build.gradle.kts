@@ -1,19 +1,18 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
   maven
   `java-library`
   kotlin("jvm") version "1.2.60"
 }
-tasks.withType<Wrapper> {
-  gradleVersion = "4.10"
+
+tasks.getByName<Wrapper>("wrapper") {
+  gradleVersion = "5.3.1"
 }
 
 java {
   sourceCompatibility = JavaVersion.VERSION_1_8
   targetCompatibility = JavaVersion.VERSION_1_8
 }
-tasks.withType<KotlinCompile> {
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
   kotlinOptions {
     jvmTarget = JavaVersion.VERSION_1_8.toString()
     freeCompilerArgs = listOf("-Xjvm-default=enable")
