@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @FunctionalInterface
 public interface BulkCacheLoader<K, V> extends CacheLoader<K, V> {
@@ -14,7 +15,12 @@ public interface BulkCacheLoader<K, V> extends CacheLoader<K, V> {
 
   @Override
   default @Nullable V load(@NotNull K key) throws Exception {
-    return loadAll(Collections.singleton(key)).get(key);
+    V value = loadAll(Collections.singleton(key)).get(key);
+
+    if (value != null) {
+      return value;
+    }
+    throw new NoSuchElementException(String.valueOf(key));
   }
 
   static <K, V> @NotNull BulkCacheLoader<K, V> multicast(
