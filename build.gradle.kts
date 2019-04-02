@@ -30,8 +30,8 @@ dependencies {
   implementation(create(kotlin("stdlib"), closureOf<ExternalModuleDependency> {
     exclude("org.jetbrains", "annotations")
   }))
-  compileOnly("org.jetbrains:annotations:16.0.2")
-  api("com.github.ben-manes.caffeine:caffeine:2.6.2")
+  compileOnly("org.jetbrains:annotations:17.0.0")
+  api("com.github.ben-manes.caffeine:caffeine:2.7.0")
 
-  testImplementation("io.kotlintest:kotlintest-runner-junit5:3.1.9")
+  testImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.1")
 }
