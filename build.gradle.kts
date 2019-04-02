@@ -1,7 +1,7 @@
 plugins {
   maven
   `java-library`
-  kotlin("jvm") version "1.2.60"
+  kotlin("jvm") version "1.3.21"
 }
 
 tasks.getByName<Wrapper>("wrapper") {
